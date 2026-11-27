@@ -106,13 +106,17 @@ def main():
     print("\n[7] 源码与配置护栏")
     src = open(ga.__file__.replace(".pyc", ".py"), encoding="utf-8").read()
     ck("type_into 用了 _patch_diff_ratio", "_patch_diff_ratio(before_patch, after_patch)" in src)
-    ck("双判据：方差 且 占比", "abs(after - before) > min_delta and _ratio >= min_ratio" in src)
+    ck("输入同时校验方差、变化占比、内容像素",
+       "abs(after - before) > min_delta and _ratio >= min_ratio" in src
+       and "_ink >= min_ink" in src)
+    ck("截图失败不再放行", "输入无法截图校验，重试" in src)
     ck("失败仍抛错（required 时不会继续点创建）",
        "raise RuntimeError(f\"输入失败，{retries} 次都没写进去" in src)
     ck("新增 ensure_pwd 步骤（点创建前复核 + 空则补输）",
        '"ensure_pwd"' in src and 'if kind in ("assert_ink", "check_ink", "ensure_pwd"):' in src)
     ck("空框会继续输入（补输循环）", "→ 补输第 {attempt}/{tries} 次" in src)
     ck("补输仍空才抛错", "密码框始终是空的" in src)
+    ck("弹窗重开失败不会点创建", "密码框校验失败，建房弹窗没重开" in src)
     cfg = json.load(io.open("configs/wuxia_dialog.json", encoding="utf-8"))
     kinds = [list(s)[0] for s in cfg["tasks"]["fill_and_submit"]["steps"]]
     ck("配置里 ensure_pwd 在 click_image 之前",
@@ -124,6 +128,9 @@ def main():
     ck("fill_and_submit 的 type_into 仍是 required=true",
        any("type_into" in s and s["type_into"].get("required") for s in
            cfg["tasks"]["fill_and_submit"]["steps"]))
+    ck("建房密码输入要求至少 40 个内容像素",
+       all(s["type_into"].get("min_ink") == 40 for task in ("fill_pwd", "fill_and_submit")
+           for s in cfg["tasks"][task]["steps"] if "type_into" in s))
 
     print("\n" + "=" * 60)
     print("通过 %d 项，失败 %d 项" % (OK, FAIL))

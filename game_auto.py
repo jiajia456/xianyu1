@@ -1811,9 +1811,22 @@ class Bot:
         while time.time() - t0 < 8:
             h = create_dialog_hwnd()
             if h:
-                log.info(f"   ✓ 建房弹窗已重开（hwnd={h}）→ 重新填密码")
-                self._sleep(700)
-                return True
+                # 旧弹窗已销毁；后续截图和输入必须绑定新句柄。
+                new_win = GameWindow(
+                    title_re=self.win_cfg.get("title_re"),
+                    exe=self.win_cfg.get("exe"),
+                    min_size=int(self.win_cfg.get("min_size", 200)),
+                    pick=self.win_cfg.get("pick", "largest"),
+                    size_hint=self.win_cfg.get("size_hint"),
+                )
+                if new_win.hwnd == h:
+                    self.win = new_win
+                    self.input.win = new_win
+                    log.info(f"   ✓ 建房弹窗已重开并绑定（hwnd={h}）→ 重新填密码")
+                    self._sleep(700)
+                    return True
+                log.warning(f"   建房弹窗句柄 {h} 与重新绑定的窗口 {new_win.hwnd} 不一致")
+                return False
             self._sleep(300)
         log.warning("   ⚠️ 8s 内没等到建房弹窗重开")
         return False
@@ -2978,6 +2991,7 @@ class Bot:
             retries = int(spec.get("retries", 3))
             min_delta = float(spec.get("min_delta", 0.35))
             min_ratio = float(spec.get("min_ratio", 0.006))
+            min_ink = int(spec.get("min_ink", 0))
             ok = False
             for attempt in range(retries):
                 self._checkpoint()
@@ -3010,13 +3024,14 @@ class Bot:
                 after_patch = self._region_patch(region) if region else None
                 after = float(after_patch.std()) if after_patch is not None else None
                 if before is None or after is None:
-                    ok = True
-                    break
+                    log.warning(f"第 {attempt + 1} 次输入无法截图校验，重试")
+                    continue
                 _ratio = self._patch_diff_ratio(before_patch, after_patch)
                 _ink = self._patch_ink(after_patch)
                 # 双判据（2026-11-27 17:35 用户现场）：方差变化 + 像素变化占比都要达标。
                 # 光标闪一下通常只有 0.1~0.4% 的像素变化，会被这里判成「没写进去」。
-                if abs(after - before) > min_delta and _ratio >= min_ratio:
+                if (abs(after - before) > min_delta and _ratio >= min_ratio
+                        and _ink >= min_ink):
                     log.info(f"输入生效：{text!r}（第 {attempt + 1} 次，区域方差 "
                              f"{before:.2f}→{after:.2f}，变化像素 {_ratio * 100:.1f}%，"
                              f"内容像素 {_ink}px）")
@@ -3078,7 +3093,7 @@ class Bot:
                             log.warning(f"   补输出错：{type(e).__name__}: {e}")
                         patch = self._region_patch(region)
                         ink = self._patch_ink(patch)
-                    if patch is None or ink >= need:
+                    if patch is not None and ink >= need:
                         tail = f"，补输 {attempt} 次" if attempt else ""
                         log.info(f"   ✓ 密码框有内容（内容像素 {ink} ≥ {need}{tail}）")
                         return
@@ -3086,8 +3101,7 @@ class Bot:
                         log.warning(f"   ⛔ 第 {_rnd} 轮补输 {tries} 次仍是空框"
                                     f" → 点「取消」重开建房弹窗再填")
                         if not self._cancel_and_reopen_dialog(spec):
-                            log.warning("   ⚠️ 建房弹窗没重开 → 放弃重开，按空框处理")
-                            break
+                            raise RuntimeError("密码框校验失败，建房弹窗没重开 → 不点「创建」")
                     else:
                         raise RuntimeError(
                             f"密码框始终是空的（内容像素 {ink} < {need}，"
@@ -3463,7 +3477,7 @@ def verify_room_before_start(verbose=True):
             log.info("   现在没有房间窗口 → 交给 ①②③ 新建")
         return "no_room"
 
-    if via == "window_pair":
+    if _w7 and via == "window_pair":
         # 2026-11-27 用户定（现场 14:44 误判修复）：
         # 已经按 PID+尺寸确认是房间窗时，截图 0 分**只代表画面暂时读不到**，
         # 不代表房间「游戏中」。先绑定这扇窗交给第 ④ 步开局，
@@ -3483,6 +3497,9 @@ def verify_room_before_start(verbose=True):
 
     _h, info = rf.check_room(room["hwnd"], verbose=False)
     if info is None:
+        if not _w7:
+            log.error("   ⛔ Win10 房间名/密码无法读取，停止开局")
+            return "uncertain"
         BOUND_ROOM.update({"hwnd": room["hwnd"], "via": via, "scores": None})
         if verbose:
             log.info("   ⚠️ 房间画面读不出来（可能是加载中/被遮挡）→ 复用已确认的房间窗口")
@@ -3877,6 +3894,8 @@ def cmd_pipeline(args):
 
     每一步都会重新绑定自己的窗口（平台主窗 / 弹窗 / 房间 / War3 大厅），
     所以比 bat 里串 4 条命令更稳，也省掉每次进程启动的 1~2 秒。"""
+    import sysenv as _se
+    _w7 = _se.is_win7()
     enable_dpi_awareness()
     # 2026-11-27 用户要求（第 4 条）：KK 未运行 → 自动打开；登录页 → 停下等用户登录。
     # ensure_running 幂等，full_loop 已调过也不会重复拉起。
@@ -3918,7 +3937,7 @@ def cmd_pipeline(args):
                 return 0
             if _vr == "platform_restarted":
                 return RC_RESTARTED
-            if _vr in ("uncertain", "room_busy"):
+            if _vr in ("uncertain", "room_busy") or (_vr == "unknown" and not _w7):
                 return 1
         except Exception as e:
             log.error(f"   ⛔ 房间校验出错，停止本次开局：{type(e).__name__}: {e}")
@@ -4096,6 +4115,9 @@ def cmd_pipeline(args):
             if _v == "game_running":
                 return 0
             if _v in ("unknown", "uncertain", "room_busy"):
+                if not _w7:
+                    log.error(f"   ⛔ Win10 开局前房间名/密码未能确认（{_v}），停止开局")
+                    return 1
                 log.info(f"   ℹ 房间状态判不了（{_v}）→ 按 W7 优先放行，继续 ④")
         # 每步开跑前先扫一眼广告浮层（首充礼包这类会盖住主窗、吃掉所有点击）
         _ad_check()

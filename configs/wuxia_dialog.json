@@ -58,6 +58,7 @@
       "click_wait": 300,
       "after_wait": 400,
       "retries": 3,
+      "min_ink": 40,
       "required": true
      }
     },
@@ -78,6 +79,21 @@
   "submit": {
    "repeat": 1,
    "steps": [
+    {
+     "ensure_pwd": {
+      "region": [135, 200, 395, 26],
+      "point": [335, 217],
+      "text": "Aa",
+      "min_ink": 40,
+      "tries": 3,
+      "click_wait": 300,
+      "after_wait": 450,
+      "interval": 120,
+      "cancel_point": [349, 411],
+      "create_point": [814, 893],
+      "rounds": 2
+     }
+    },
     {
      "log": "① 点弹窗里的「创建」"
     },
@@ -136,6 +152,7 @@
       "click_wait": 300,
       "after_wait": 400,
       "retries": 3,
+      "min_ink": 40,
       "required": true
      }
     },
