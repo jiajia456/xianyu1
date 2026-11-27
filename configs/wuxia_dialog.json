@@ -1,0 +1,223 @@
+{
+ "_note": [
+  "「创建房间」弹窗任务 —— 这个弹窗是【独立小窗口】(584x517)，不是主窗口里的弹层！",
+  "所以必须绑 pick=smallest，坐标按弹窗自己的客户区算，点主窗口坐标是点不中的（之前失败的原因）",
+  "任务：fill_pwd（填密码） / submit（点创建） / fill_and_submit（一条龙）",
+  "运行： run.bat run --config configs\\wuxia_dialog.json --task fill_and_submit"
+ ],
+ "window": {
+  "exe": [
+   "Platform.exe"
+  ],
+  "min_size": 400,
+  "pick": "smallest"
+ },
+ "capture": "auto",
+ "humanize": true,
+ "click_jitter": 1,
+ "template_dir": "templates",
+ "start_task": "submit",
+ "hotkeys": {
+  "start_pause": "f8",
+  "stop": "f9",
+  "panic": "f10"
+ },
+ "tasks": {
+  "fill_pwd": {
+   "repeat": 1,
+   "steps": [
+    {
+     "log": "① 在弹窗里填房间密码 Aa（带自校验）"
+    },
+    {
+     "type_into": {
+      "template": "box_dlg_pwd.png",
+      "threshold": 0.85,
+      "region_locate": [
+       120,
+       190,
+       430,
+       50
+      ],
+      "offset": [
+       0,
+       0
+      ],
+      "point": [
+       335,
+       217
+      ],
+      "text": "Aa",
+      "region": [
+       135,
+       200,
+       395,
+       26
+      ],
+      "interval": 120,
+      "click_wait": 300,
+      "after_wait": 400,
+      "retries": 3,
+      "required": true
+     }
+    },
+    {
+     "move": [
+      560,
+      470
+     ]
+    },
+    {
+     "wait": 300
+    },
+    {
+     "log": "✅ 密码已填"
+    }
+   ]
+  },
+  "submit": {
+   "repeat": 1,
+   "steps": [
+    {
+     "log": "① 点弹窗里的「创建」"
+    },
+    {
+     "click_image": {
+      "template": "btn_dlg_create.png",
+      "threshold": 0.85,
+      "timeout": 6000,
+      "fallback": [
+       199,
+       437
+      ],
+      "required": true
+     }
+    },
+    {
+     "wait": 3000
+    },
+    {
+     "log": "✅ 已提交创建"
+    }
+   ]
+  },
+  "fill_and_submit": {
+   "repeat": 1,
+   "steps": [
+    {
+     "log": "① 填密码"
+    },
+    {
+     "type_into": {
+      "template": "box_dlg_pwd.png",
+      "threshold": 0.85,
+      "region_locate": [
+       120,
+       190,
+       430,
+       50
+      ],
+      "offset": [
+       0,
+       0
+      ],
+      "point": [
+       335,
+       217
+      ],
+      "text": "Aa",
+      "region": [
+       135,
+       200,
+       395,
+       26
+      ],
+      "interval": 120,
+      "click_wait": 300,
+      "after_wait": 400,
+      "retries": 3,
+      "required": true
+     }
+    },
+    {
+     "move": [
+      560,
+      470
+     ]
+    },
+    {
+     "wait": 400
+    },
+    {
+     "ensure_pwd": {
+      "region": [
+       135,
+       200,
+       395,
+       26
+      ],
+      "point": [
+       335,
+       217
+      ],
+      "text": "Aa",
+      "min_ink": 40,
+      "tries": 3,
+      "click_wait": 300,
+      "after_wait": 450,
+      "interval": 120,
+      "cancel_point": [
+       349,
+       411
+      ],
+      "create_point": [
+       814,
+       893
+      ],
+      "rounds": 2
+     }
+    },
+    {
+     "log": "② 点「创建」"
+    },
+    {
+     "click_image": {
+      "template": "btn_dlg_create.png",
+      "threshold": 0.85,
+      "timeout": 6000,
+      "fallback": [
+       199,
+       437
+      ],
+      "required": true
+     }
+    },
+    {
+     "wait": 3000
+    },
+    {
+     "log": "✅ 已提交创建"
+    }
+   ]
+  },
+  "cancel": {
+   "repeat": 1,
+   "steps": [
+    {
+     "click_image": {
+      "template": "btn_dlg_cancel.png",
+      "threshold": 0.85,
+      "timeout": 5000,
+      "fallback": [
+       401,
+       437
+      ]
+     }
+    },
+    {
+     "wait": 1000
+    }
+   ]
+  }
+ }
+}

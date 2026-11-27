@@ -1,0 +1,14 @@
+{
+  "n_games": 30,
+  "n_fishing": 2,
+  "fishing_hours": 5.0,
+  "claim_every": 10,
+  "loops": 0,
+  "stop_on_fail": false,
+  "busy_wait": 6,
+  "busy_attempts": 2,
+  "busy_restart": true,
+  "order": "full_first",
+  "max_round_min": 50,
+  "settle_min": 6
+}

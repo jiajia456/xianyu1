@@ -1,0 +1,178 @@
+{
+  "_note": [
+    "魔兽 RPG 模块（y3）挂机脚本：技能循环 / 打怪移动 / 防挂机踢出",
+    "进程名不确定时先跑 list-windows 确认（常见 war3.exe / Warcraft III.exe / y3.exe），把实际名字填进 exe 数组",
+    "技能键默认 Q W E R，绝大多数 RPG 图（守卫剑阁、真三、澄海等）都是这套；改图就改 key 值",
+    "运行： python game_auto.py --config configs\\war3.json --task skill_loop"
+  ],
+  "window": {
+    "exe": [
+      "war3.exe",
+      "Warcraft III.exe",
+      "y3.exe"
+    ],
+    "min_size": 400,
+    "_note": "只认 War3 进程；不要把 Platform.exe 混进来（War3 没起来时它会绑到平台窗并对着平台发按键）"
+  },
+  "capture": "auto",
+  "humanize": true,
+  "click_jitter": 4,
+  "template_dir": "templates",
+  "start_task": "skill_loop",
+  "hotkeys": {
+    "start_pause": "f8",
+    "stop": "f9",
+    "panic": "f10"
+  },
+  "tasks": {
+    "skill_loop": {
+      "repeat": 0,
+      "steps": [
+        {
+          "log": "技能循环：Q→W→E→R，每轮之间停 1 秒"
+        },
+        {
+          "keys": [
+            "q",
+            "w",
+            "e",
+            "r"
+          ],
+          "gap": 220
+        },
+        {
+          "wait": 1000
+        },
+        {
+          "key": "r"
+        },
+        {
+          "wait": 1500
+        }
+      ]
+    },
+    "farm": {
+      "repeat": 0,
+      "steps": [
+        {
+          "log": "刷怪循环：选中英雄 → 右键点地面走位 → A 地板攻击 → 放技能"
+        },
+        {
+          "key": "f1"
+        },
+        {
+          "wait": 200
+        },
+        {
+          "click": {
+            "x": 640,
+            "y": 380,
+            "button": "right"
+          }
+        },
+        {
+          "wait": 900
+        },
+        {
+          "key": "a"
+        },
+        {
+          "wait": 120
+        },
+        {
+          "click": {
+            "x": 660,
+            "y": 360,
+            "button": "left"
+          }
+        },
+        {
+          "wait": 400
+        },
+        {
+          "keys": [
+            "q",
+            "w",
+            "e"
+          ],
+          "gap": 260
+        },
+        {
+          "wait": 1800
+        }
+      ]
+    },
+    "anti_idle": {
+      "repeat": 0,
+      "steps": [
+        {
+          "log": "防挂机：每分钟轻微操作一次（方向键 + 空格）"
+        },
+        {
+          "key": "left"
+        },
+        {
+          "wait": 200
+        },
+        {
+          "key": "space"
+        },
+        {
+          "wait": 60000
+        }
+      ]
+    },
+    "buy_flow": {
+      "_note": "商店买东西：需要先把按钮截成模板（见 README 的截模板一节）",
+      "repeat": 0,
+      "steps": [
+        {
+          "click_image": {
+            "template": "shop_open.png",
+            "threshold": 0.82,
+            "timeout": 3000
+          }
+        },
+        {
+          "wait": 500
+        },
+        {
+          "click_image": {
+            "template": "item_01.png",
+            "threshold": 0.85,
+            "timeout": 3000
+          }
+        },
+        {
+          "key": "esc"
+        },
+        {
+          "wait": 1500
+        }
+      ]
+    },
+    "release_all": [
+      {
+        "keyup": "q"
+      },
+      {
+        "keyup": "w"
+      },
+      {
+        "keyup": "e"
+      },
+      {
+        "keyup": "r"
+      },
+      {
+        "keyup": "a"
+      },
+      {
+        "keyup": "shift"
+      },
+      {
+        "keyup": "ctrl"
+      }
+    ]
+  }
+}

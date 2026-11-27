@@ -1,0 +1,489 @@
+{
+ "_note": [
+  "房间窗口任务（点「创建」后弹出的那个，标题同样是 KK官方对战平台，但尺寸更小 1224x904）",
+  "用 pick=smallest 绑小窗口，主平台窗口不动",
+  "",
+  "【关键规则】每次点「开始游戏」前，必须循环 2 次确认「观战」已取消勾选；2 次后仍勾着就放弃点击",
+  "  判定模板 = 「观战」文字 + 复选框，86x30，位置 (100,603)，中心 (143,618)",
+  "  判定区 region=[100,595,130,45]，只覆盖观战这一行，不会误伤下方「自动踢出不准备的玩家」",
+  "  【重要】每次判定前必须先把鼠标移开（move 700,300）——悬停样式会让勾选/未勾选都只有 0.88 分，判不出来",
+  "  实测分离度：勾选 1.000 / 未勾选 0.743 → 阈值取 0.92",
+  "  点框偏移：模板中心 +25 → 勾选框中心 (168,618)",
+  "",
+  "【为什么「开始游戏」不用固定坐标兜底】实测踩过：上一局还在跑时点开局，平台会弹「断线重连（您先前的游戏还在进行中）」，",
+  "  同时按钮变成灰色的「游戏中」。老配置 miss 后会盲点 (861,604)，正好点进弹窗/无效区域，",
+  "  结果被断线重连拉回旧局，后面大厅截图全是旧局画面。现在改成找不到按钮就报错停住（required），宁可不点也不乱点。",
+  "",
+  "运行： run.bat run --config configs\\wuxia_room.json --task start_game",
+  "",
+  "【2026-11-18 02:20 平台换皮肤后适配】房间窗仍是 1224x904，但按钮/勾选框视觉风格全变了：",
+  "  旧 btn_start_game.png 最高只有 0.831（还误命中「快速匹配」），chk 只有 0.451 → 开局必挂。",
+  "  新增 skin2 模板（从缩放到基准 1690x921 的房间窗裁）：",
+  "    btn_start_game_skin2.png 182x40 命中 1.000 / 次高 0.392",
+  "    chk_spectate_on_skin2.png 118x34 命中 1.000 / 次高 0.737（上面「裁判位」行）",
+  "  两套模板并列写在 template 数组里，换回旧皮肤也能用。region 放宽到 [100,595,175,55]，",
+  "  阈值 chk 0.92→0.90、btn 0.82→0.88（旧模板在新画面 0.831，必须高于它才不会误点）。",
+  "  已删除 btn 的 fallback [861,604]：新皮肤下该坐标已无按钮，盲点风险大于收益。",
+  "",
+  "【2026-11-18 02:26 观战门禁放宽】新版平台皮肤下，「观战」复选框在房间创建后被锁定：",
+  "  点文字 / 点框中心 / 双击框 / Tab+Space 全部无效（勾选态模板分数始终 0.95~1.00 不下降）。",
+  "  实测：观战勾着点「开始游戏」→ 6 秒后 War3 正常启动 → 不影响开局。",
+  "  因此原「2 次取消不掉就 stop:true 放弃」改成「告警 + 照常点开始游戏」。"
+ ],
+ "window": {
+  "exe": [
+   "Platform.exe"
+  ],
+  "min_size": 400,
+  "pick": "smallest",
+  "size_hint": [
+   1224,
+   904
+  ]
+ },
+ "capture": "auto",
+ "humanize": true,
+ "click_jitter": 1,
+ "template_dir": "templates",
+ "start_task": "start_game",
+ "hotkeys": {
+  "start_pause": "f8",
+  "stop": "f9",
+  "panic": "f10"
+ },
+ "tasks": {
+  "start_game": {
+   "repeat": 1,
+   "steps": [
+    {
+     "log": "① 开局前检查：识别「观战」是否打钩（打钩就点掉）"
+    },
+    {
+     "loop": {
+      "count": 3,
+      "gap": 450,
+      "steps": [
+       {
+        "move": [
+         700,
+         300
+        ]
+       },
+       {
+        "wait": 250
+       },
+       {
+        "if_image": {
+         "template": [
+          "chk_spectate_checked_actual.png",
+          "chk_spectate_checked_theme2.png",
+          "chk_spectate_checked_theme3.png"
+         ],
+         "threshold": 0.93,
+         "region": [
+          120,
+          575,
+          140,
+          80
+         ],
+         "then": [
+          {
+           "log": "   观战打钩 → 点击取消"
+          },
+          {
+           "click": {
+            "x": 165,
+            "y": 613
+           }
+          },
+          {
+           "move": [
+            700,
+            300
+           ]
+          },
+          {
+           "wait": 500
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "log": "② 核心核对：识别「空框」= 已取消"
+    },
+    {
+     "move": [
+      700,
+      300
+     ]
+    },
+    {
+     "wait": 350
+    },
+    {
+     "if_image": {
+      "template": [
+       "chk_spectate_empty_actual.png",
+       "chk_spectate_empty_theme2.png",
+       "chk_spectate_empty_theme3.png"
+      ],
+      "threshold": 0.96,
+      "region": [
+       120,
+       575,
+       140,
+       80
+      ],
+      "then": [
+       {
+        "log": "   ✅ 空框确认 → 观战已取消 → 点开始游戏"
+       },
+       {
+        "click_image": {
+         "template": [
+          "btn_start_game.png",
+          "btn_start_game_skin2.png",
+          "btn_start_game_theme3.png"
+         ],
+         "threshold": 0.88,
+         "timeout": 6000,
+         "required": true
+        }
+       },
+       {
+        "wait": 3000
+       },
+       {
+        "log": "✅ 已点击开始游戏"
+       }
+      ],
+      "else": [
+       {
+        "log": "   ⚠ 空框未确认 → 查是否还打钩"
+       },
+       {
+        "if_image": {
+         "template": [
+          "chk_spectate_checked_actual.png",
+          "chk_spectate_checked_theme2.png",
+          "chk_spectate_checked_theme3.png"
+         ],
+         "threshold": 0.93,
+         "region": [
+          120,
+          575,
+          140,
+          80
+         ],
+         "then": [
+          {
+           "log": "   仍打钩 → 再点一次"
+          },
+          {
+           "click": {
+            "x": 165,
+            "y": 613
+           }
+          },
+          {
+           "move": [
+            700,
+            300
+           ]
+          },
+          {
+           "wait": 500
+          },
+          {
+           "click_image": {
+            "template": [
+             "btn_start_game.png",
+             "btn_start_game_skin2.png",
+             "btn_start_game_theme3.png"
+            ],
+            "threshold": 0.88,
+            "timeout": 6000,
+            "required": true
+           }
+          },
+          {
+           "wait": 3000
+          },
+          {
+           "log": "✅ 已点击开始游戏（补点后）"
+          }
+         ],
+         "else": [
+          {
+           "log": "   ℹ 空框/打钩都未识别 → 照常点开始"
+          },
+          {
+           "click_image": {
+            "template": [
+             "btn_start_game.png",
+             "btn_start_game_skin2.png",
+             "btn_start_game_theme3.png"
+            ],
+            "threshold": 0.88,
+            "timeout": 6000,
+            "required": true
+           }
+          },
+          {
+           "wait": 3000
+          },
+          {
+           "log": "✅ 已点击开始游戏（兜底）"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "spectate_off": {
+   "_note": "只把「观战」取消勾选，不开局（同样带 2 次循环复核）",
+   "repeat": 1,
+   "steps": [
+    {
+     "loop": {
+      "count": 2,
+      "gap": 350,
+      "steps": [
+       {
+        "move": [
+         700,
+         300
+        ]
+       },
+       {
+        "wait": 250
+       },
+       {
+        "if_image": {
+         "template": [
+          "chk_spectate_on.png",
+          "chk_spectate_on_skin2.png",
+          "chk_spectate_checked_theme3.png"
+         ],
+         "threshold": 0.9,
+         "region": [
+          85,
+          594,
+          160,
+          50
+         ],
+         "then": [
+          {
+           "log": "观战勾选中 → 取消"
+          },
+          {
+           "click_image": {
+            "template": [
+             "chk_spectate_on.png",
+             "chk_spectate_on_skin2.png"
+            ],
+            "threshold": 0.9,
+            "region": [
+             85,
+             594,
+             160,
+             50
+            ],
+            "timeout": 2500,
+            "offset": [
+             25,
+             0
+            ],
+            "fallback": [
+             230,
+             625
+            ],
+            "fallback_ref": [
+             1690,
+             921
+            ]
+           }
+          },
+          {
+           "move": [
+            700,
+            300
+           ]
+          },
+          {
+           "wait": 400
+          }
+         ],
+         "else": [
+          {
+           "log": "观战已是未勾选"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "move": [
+      700,
+      300
+     ]
+    },
+    {
+     "wait": 300
+    },
+    {
+     "if_image": {
+      "template": [
+       "chk_spectate_on.png",
+       "chk_spectate_on_skin2.png",
+       "chk_spectate_checked_theme3.png"
+      ],
+      "threshold": 0.9,
+      "region": [
+       85,
+       594,
+       160,
+       50
+      ],
+      "then": [
+       {
+        "log": "⚠ 2 次后仍勾选"
+       }
+      ],
+      "else": [
+       {
+        "log": "✅ 观战已取消"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "spectate_state": {
+   "_note": "只报观战当前状态，不点击（调试用）",
+   "repeat": 1,
+   "steps": [
+    {
+     "move": [
+      700,
+      300
+     ]
+    },
+    {
+     "wait": 250
+    },
+    {
+     "if_image": {
+      "template": [
+       "chk_spectate_on.png",
+       "chk_spectate_on_skin2.png",
+       "chk_spectate_checked_theme3.png"
+      ],
+      "threshold": 0.9,
+      "region": [
+       85,
+       594,
+       160,
+       50
+      ],
+      "then": [
+       {
+        "log": "观战 = 已勾选"
+       }
+      ],
+      "else": [
+       {
+        "log": "观战 = 未勾选"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "start_game_raw": {
+   "_note": "不做观战检查，直接点开始（调试用）",
+   "repeat": 1,
+   "steps": [
+    {
+     "click_image": {
+      "template": [
+       "btn_start_game.png",
+       "btn_start_game_skin2.png",
+       "btn_start_game_theme3.png"
+      ],
+      "threshold": 0.88,
+      "timeout": 8000,
+      "required": true
+     }
+    },
+    {
+     "wait": 3000
+    }
+   ]
+  },
+  "invite": {
+   "repeat": 1,
+   "steps": [
+    {
+     "click_image": {
+      "template": "btn_invite.png",
+      "threshold": 0.82,
+      "timeout": 6000,
+      "fallback": [
+       988,
+       604
+      ]
+     }
+    },
+    {
+     "wait": 1500
+    }
+   ]
+  },
+  "wait_start": {
+   "_note": "等人满自动开始：每 2 秒看一次「开始游戏」是否还在",
+   "repeat": 1,
+   "steps": [
+    {
+     "loop": {
+      "count": 90,
+      "gap": 2000,
+      "steps": [
+       {
+        "if_image": {
+         "template": [
+          "btn_start_game.png",
+          "btn_start_game_skin2.png",
+          "btn_start_game_theme3.png"
+         ],
+         "threshold": 0.88,
+         "then": [
+          {
+           "log": "   还在房间里"
+          }
+         ],
+         "else": [
+          {
+           "log": "   房间界面已变化（可能已开始）"
+          },
+          {
+           "stop": true
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

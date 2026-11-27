@@ -1,0 +1,21 @@
+macOS 不必安装 Windows。GitHub Actions 使用 windows-2022 x64 构建机，
+Python 3.8.10 + PyInstaller 5.13.2 构建兼容 Win7 SP1 / Win10 的主程序。
+
+上传前：
+1. 以本「源码」目录作为仓库根目录，保留隐藏的 .github 文件夹。
+2. .gitignore 排除构建结果、日志、缓存、旧版重复 EXE 和压缩包。
+3. 如果选择公开仓库，上传前检查源码、配置、文档和 tools/ 内的辅助程序，
+   确认愿意公开这些内容。公开仓库和 Actions 产物都可被他人获取。
+
+构建：
+1. 在仓库 Actions 页面选择 Build Windows EXE，点击 Run workflow。
+2. 构建成功后，从该次运行的 Artifacts 下载 Windows-EXE。
+3. 下载的 Artifact 是一层 ZIP，解压后得到程序 ZIP；再次解压，
+   运行文件夹中的主 EXE。不要只复制单个 EXE。
+
+工作流会执行原有的 EXE 环境自检、GUI 渲染自检、Win7 PE 静态兼容检查，
+还会检查 ZIP 的完整性和必备文件。失败时查看 Build and validate EXE 日志；
+Windows 7/10 实机运行仍需验证。
+
+GitHub 公开仓库的标准 runner 分钟数免费，但单个 job 仍有时长上限。
+本工作流设置 60 分钟超时，Artifact 保留 7 天。

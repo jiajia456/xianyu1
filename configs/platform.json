@@ -1,0 +1,67 @@
+{
+  "_note": [
+    "平台本体（E:\\kkduizhan\\Platform.exe）自动化：自动点开房 / 自动签到 / 一键进游戏",
+    "平台是 Qt + WebEngine 界面，位置会随分辨率变化，所以这里全部用「找图点击」而不是固定坐标",
+    "使用前必须先把要点的按钮截成模板放进 templates\\ 目录，名字和下面 template 一致：",
+    "  btn_enter_room.png   平台首页/房间列表里的「开始游戏 / 进入」按钮",
+    "  btn_sign_in.png      签到 / 领取奖励按钮",
+    "  btn_confirm.png      通用确认弹窗",
+    "截模板： python game_auto.py crop --window-exe Platform.exe --crop 720,430,180,48 --out templates\\btn_enter_room.png",
+    "运行：   python game_auto.py --config configs\\platform.json --task enter_game"
+  ],
+  "window": {
+    "exe": ["Platform.exe"],
+    "title_re": ["KK"],
+    "min_size": 400
+  },
+  "capture": "printwindow",
+  "humanize": true,
+  "click_jitter": 2,
+  "template_dir": "templates",
+  "start_task": "enter_game",
+  "hotkeys": {
+    "start_pause": "f8",
+    "stop": "f9",
+    "panic": "f10"
+  },
+  "tasks": {
+    "enter_game": {
+      "repeat": 1,
+      "steps": [
+        { "log": "等平台界面加载完" },
+        { "wait": 3000 },
+        { "click_image": { "template": "btn_enter_room.png", "threshold": 0.80, "timeout": 8000, "required": false } },
+        { "wait": 2500 },
+        { "click_image": { "template": "btn_confirm.png", "threshold": 0.80, "timeout": 4000, "required": false } },
+        { "log": "已提交进入游戏" }
+      ]
+    },
+
+    "daily": {
+      "repeat": 1,
+      "steps": [
+        { "log": "自动签到 / 领奖励" },
+        { "click_image": { "template": "btn_sign_in.png", "threshold": 0.80, "timeout": 6000, "required": false } },
+        { "wait": 800 },
+        { "click_image": { "template": "btn_confirm.png", "threshold": 0.80, "timeout": 4000, "required": false } }
+      ]
+    },
+
+    "watchdog": {
+      "_note": "断线自动重连：每隔 5 秒看一眼房间界面在不在，掉落就重新点进入",
+      "repeat": 0,
+      "steps": [
+        { "if_image": {
+            "template": "room_ready.png",
+            "threshold": 0.80,
+            "then": [ { "wait": 5000 } ],
+            "else": [
+              { "log": "未检测到房间界面，尝试重连" },
+              { "click_image": { "template": "btn_enter_room.png", "threshold": 0.80, "timeout": 5000, "required": false } },
+              { "wait": 4000 }
+            ]
+        }}
+      ]
+    }
+  }
+}

@@ -1,0 +1,554 @@
+{
+ "_note": [
+  "【2026-11-27 16:20 断线重连新规则】等大厅期间每 6 秒（disc_interval_s）巡检一次「断线重连」弹窗：命中先按 ESC，ESC 关不掉才点「取消」；紧随其后的「断线重连失败。」同样 ESC 优先、不行点「确定」。弹窗收掉后看房间窗——「开始游戏」亮着就回 ④ 重新点开始游戏（不重启 KK 平台）；没亮（平台仍认为在游戏中）就继续等大厅，不重启、不重复点。",
+  "【2026-11-18 23:30 加进程看门狗】用户实测：任务管理器直接结束 War3，平台**不弹**断线重连、直接回房间 → 旧逻辑只能干等 900 秒。现在 wait_image 里 proc_watch=true：见过 War3 进程活着之后，连续 2 次（30 秒一次）查不到就判「这一局结束」→ 交 pipeline 回退 ④ 重开；点了开始游戏 150s 连进程都没起来（秒退）也照此处理。窗口 0x0 但进程还在的情况不受影响（继续等）。",
+  "auto_start（2026-11-18 19:22 精简）：监控到大厅难度画面 → 点最下面一行（最高档）→ 点开始游戏。没有别的操作。",
+  "魔兽大地图大厅（War3.exe）：等大厅出现 → 选最高难度（双击）→ 点开始游戏",
+  "难度不写死编号：用 click_last_row 识别列表里所有行（连通域），取最下面那一行 = 最高难度",
+  "2026-11-16 17:33 用户说明：换账号后从 N1 开始打，大厅只显示「当前可打的那一个难度」（显示 1 个就说明进度到哪一步），所以 min_rows 改成 1：可见几个就点第几个。难度推进靠账号进度，脚本按轮次记录 N1..N6。",
+  "2026-11-16 19:58 结论：当时难度只有 N1~N8，N8 是最高档（大厅右侧写「难度说明：N8」，左侧恰好 8 个按钮）。区域放宽到 y=740 会多检出一条高度 39 的面板边框，所以一直停在 [690,105,190,470]。",
+  "2026-11-18 10:33 用户：地图更新后大厅会出现 N9，要求新难度第一时间就能选到 → region 高度 470→595（y 105~700，能装到第 10 行；740 的面板边框仍在区域外），并且 game_auto 加了「可见行数 > 目标行号 就改点最高档」。",
+  "click_row：按行号选难度。row=auto 读 logs/diff_target.json（full_loop 逐轮写 N1..N6）；wait_rows=15 秒等列表画完（实测刚出现时只画 1 行，等 2 秒就放弃会一个难度都不选）；fallback_first_y/pitch = 识别失败时按几何位置兜底（8 行实测 第1行 y=146、行距 53）",
+  "  V1.0.44 实测：列表一屏固定 7 行（N1-N7），滚轮/拖拽都不生效，所以 N7 就是当前最高",
+  "  行几何（1690x921 基准）：第 1 行中心 y≈146、行距≈53、行高≈44 → 第 9 行 y≈570、第 10 行 y≈623，都在 region 内",
+  "retries/retry_wait：大厅刚弹出时难度列表可能还没画完，读到 0~2 行会自动等 600ms 重试（最多 5 次）",
+  "min_rows: 3 = 少于 3 行一律视为没画完，即使重试完也不点，避免误点",
+  "scroll: 0 = 本图列表不吃滚轮，保持关闭；将来若改成可滚动列表，把它调大（如 10）即可滚到底",
+  "region [690,105,190,595] 只覆盖难度按钮那一列，bright=26 是行内亮度阈值（行内 33 / 间隙 23）",
+  "双击 2 次，间隔 2 秒；然后点「开始游戏」2 次（第 2 次如果已经进游戏就自动跳过）"
+ ],
+ "window": {
+  "exe": [
+   "War3.exe",
+   "Warcraft III.exe",
+   "y3.exe"
+  ],
+  "title_re": [
+   "Warcraft"
+  ],
+  "min_size": 400
+ },
+ "wait_window": 300,
+ "disc_interval_s": 6,
+ "capture": "auto",
+ "humanize": true,
+ "click_jitter": 1,
+ "template_dir": "templates",
+ "start_task": "auto_start",
+ "hotkeys": {
+  "start_pause": "f8",
+  "stop": "f9",
+  "panic": "f10"
+ },
+ "tasks": {
+  "auto_start": {
+   "_note": "用户 2026-11-18 19:46 定：① 监控到大厅难度画面 → ② 选难度 双击 3 次 → ③ 点开始游戏 2 轮，每轮双击 1 次（clicks=2, gap=120）→ ④ 3 秒后按钮还在再补 双击 3 次。不等普通模式卡片、不清广告。",
+   "repeat": 1,
+   "anchor_template": "btn_lobby_start.png",
+   "steps": [
+    {
+     "log": "① 只监控：等大厅难度画面（「开始游戏」按钮出现即判到位，最长 15 分钟）"
+    },
+    {
+     "wait_image": {
+      "template": "btn_lobby_start.png",
+      "threshold": 0.85,
+      "timeout": 900000,
+      "interval": 1000,
+      "required": true,
+      "scales": [
+       1.0,
+       0.95,
+       0.9,
+       0.85,
+       0.8,
+       0.75,
+       0.7,
+       0.65,
+       0.6,
+       0.55,
+       1.05,
+       1.1
+      ],
+      "any_window": true,
+      "proc_watch": true,
+      "spawn_wait_s": 150,
+      "quiet_focus_s": 90
+     }
+    },
+    {
+     "wait": 600
+    },
+    {
+     "log": "② 选难度：点最难那行（最下面一行），点 3 下"
+    },
+    {
+     "log": "②a 先点「英雄模式」（N11-N20 只在英雄模式里）"
+    },
+    {
+     "loop": {
+      "count": 2,
+      "gap": 500,
+      "steps": [
+       {
+        "click": {
+         "x": 549,
+         "y": 276,
+         "clicks": 2,
+         "click_gap": 120,
+         "hold": 70,
+         "hover": 0.5
+        }
+       }
+      ]
+     }
+    },
+    {
+     "wait": 2000
+    },
+    {
+     "click_row": {
+      "region": [
+       690,
+       105,
+       190,
+       595
+      ],
+      "bright": 26,
+      "min_h": 40,
+      "max_h": 70,
+      "min_w": 80,
+      "min_rows": 1,
+      "retries": 5,
+      "retry_wait": 600,
+      "scroll": 0,
+      "row": "auto",
+      "clicks": 3,
+      "verify_wait": 900,
+      "verify_retry": 0,
+      "wait_rows": 15,
+      "fallback_first_y": 146,
+      "fallback_pitch": 53,
+      "ref": [
+       1690,
+       921
+      ],
+      "click_gap": 250,
+      "required": false,
+      "fallback_click": [
+       585,
+       144
+      ],
+      "double": true,
+      "fallback_double_twice": true,
+      "mode_base": 10
+     }
+    },
+    {
+     "log": "   🚀 先打开「我在峡谷打僵尸_全静默版」（再点开始游戏）"
+    },
+    {
+     "start_app": {
+      "path": "我在峡谷打僵尸_全静默版.exe",
+      "required": false,
+      "settle": 2.0
+     }
+    },
+    {
+     "wait": 2000
+    },
+    {
+     "wait": 800
+    },
+    {
+     "log": "③ 点「开始游戏」：2 轮，每轮按钮在就点 1 下（间隔 2 秒）"
+    },
+    {
+     "loop": {
+      "count": 2,
+      "gap": 2000,
+      "steps": [
+       {
+        "if_image": {
+         "template": "btn_lobby_start.png",
+         "threshold": 0.86,
+         "scales": [
+          1.0,
+          0.95,
+          0.9,
+          0.85,
+          0.8,
+          0.75,
+          0.7,
+          0.65,
+          0.6,
+          0.55,
+          1.05,
+          1.1
+         ],
+         "then": [
+          {
+           "log": "   点开始游戏"
+          },
+          {
+           "click_image": {
+            "template": "btn_lobby_start.png",
+            "threshold": 0.86,
+            "scales": [
+             1.0,
+             0.95,
+             0.9,
+             0.85,
+             0.8,
+             0.75,
+             0.7,
+             0.65,
+             0.6,
+             0.55,
+             1.05,
+             1.1
+            ],
+            "timeout": 4000,
+            "clicks": 2,
+            "click_gap": 120
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "wait": 0
+    },
+    {
+     "log": "④ 兜底：3 秒后按钮若还在，再补 3 下"
+    },
+    {
+     "wait": 3000
+    },
+    {
+     "if_image": {
+      "template": "btn_lobby_start.png",
+      "threshold": 0.86,
+      "scales": [
+       1.0,
+       0.95,
+       0.9,
+       0.85,
+       0.8,
+       0.75,
+       0.7,
+       0.65,
+       0.6,
+       0.55,
+       1.05,
+       1.1
+      ],
+      "then": [
+       {
+        "log": "   按钮还在 → 补 3 下"
+       },
+       {
+        "click_image": {
+         "template": "btn_lobby_start.png",
+         "threshold": 0.86,
+         "scales": [
+          1.0,
+          0.95,
+          0.9,
+          0.85,
+          0.8,
+          0.75,
+          0.7,
+          0.65,
+          0.6,
+          0.55,
+          1.05,
+          1.1
+         ],
+         "timeout": 3000,
+         "clicks": 6,
+         "click_gap": 250
+        }
+       }
+      ],
+      "else": [
+       {
+        "log": "   按钮已消失，说明已进入载入"
+       }
+      ]
+     }
+    },
+    {
+     "wait": 2500
+    },
+    {
+     "log": "✅ 已提交开始游戏，等地图载入"
+    }
+   ]
+  },
+  "pick_max_only": {
+   "_note": "只选最高难度（不开局），调试用",
+   "repeat": 1,
+   "steps": [
+    {
+     "click_last_row": {
+      "region": [
+       690,
+       105,
+       190,
+       595
+      ],
+      "bright": 26,
+      "min_h": 20,
+      "max_h": 70,
+      "min_w": 80,
+      "min_rows": 3,
+      "retries": 5,
+      "retry_wait": 600,
+      "scroll": 0,
+      "clicks": 2
+     }
+    },
+    {
+     "wait": 500
+    }
+   ]
+  },
+  "scan_rows": {
+   "_note": "只识别不点击（dry-run 用），报告几行、落点在哪",
+   "repeat": 1,
+   "steps": [
+    {
+     "log": "扫描难度列表"
+    },
+    {
+     "click_last_row": {
+      "region": [
+       690,
+       105,
+       190,
+       595
+      ],
+      "bright": 26,
+      "min_h": 20,
+      "max_h": 70,
+      "min_w": 80,
+      "min_rows": 3,
+      "retries": 5,
+      "retry_wait": 600,
+      "scroll": 0,
+      "clicks": 1
+     }
+    }
+   ]
+  },
+  "select_only": {
+   "steps": [
+    {
+     "log": "① 只监控：等大厅难度画面（「开始游戏」按钮出现即判到位，最长 15 分钟）"
+    },
+    {
+     "wait_image": {
+      "template": "btn_lobby_start.png",
+      "threshold": 0.85,
+      "timeout": 900000,
+      "interval": 1000,
+      "required": true,
+      "scales": [
+       1.0,
+       0.95,
+       0.9,
+       0.85,
+       0.8,
+       0.75,
+       0.7,
+       0.65,
+       0.6,
+       0.55,
+       1.05,
+       1.1
+      ],
+      "any_window": true,
+      "proc_watch": true,
+      "spawn_wait_s": 150
+     }
+    },
+    {
+     "wait": 600
+    },
+    {
+     "log": "② 选难度：点最难那行（最下面一行），点 3 下"
+    },
+    {
+     "log": "②a 先点「英雄模式」（N11-N20 只在英雄模式里）"
+    },
+    {
+     "click_image": {
+      "template": "tpl_mode_hero.png",
+      "threshold": 0.75,
+      "scales": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0,
+       5.5,
+       6.0,
+       6.5,
+       0.9,
+       0.8
+      ],
+      "required": false,
+      "settle": 1.2,
+      "clicks": 2,
+      "click_gap": 120
+     }
+    },
+    {
+     "wait": 2000
+    },
+    {
+     "click_row": {
+      "region": [
+       690,
+       105,
+       190,
+       595
+      ],
+      "bright": 26,
+      "min_h": 40,
+      "max_h": 70,
+      "min_w": 80,
+      "min_rows": 1,
+      "retries": 5,
+      "retry_wait": 600,
+      "scroll": 0,
+      "row": "auto",
+      "clicks": 6,
+      "verify_wait": 900,
+      "verify_retry": 0,
+      "wait_rows": 15,
+      "fallback_first_y": 146,
+      "fallback_pitch": 53,
+      "ref": [
+       1690,
+       921
+      ],
+      "click_gap": 250,
+      "required": false
+     }
+    },
+    {
+     "log": "②c 英雄模式没难度 → 切「普通模式」再选"
+    },
+    {
+     "if_image": {
+      "template": "tpl_mode_normal.png",
+      "threshold": 0.75,
+      "scales": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0,
+       5.5,
+       6.0,
+       6.5,
+       0.9,
+       0.8
+      ],
+      "then": [
+       {
+        "click_image": {
+         "template": "tpl_mode_normal.png",
+         "threshold": 0.75,
+         "scales": [
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0,
+          5.5,
+          6.0,
+          6.5,
+          0.9,
+          0.8
+         ],
+         "required": true,
+         "settle": 1.2,
+         "clicks": 2,
+         "click_gap": 120
+        }
+       },
+       {
+        "wait": 600
+       },
+       {
+        "click_row": {
+         "region": [
+          690,
+          105,
+          190,
+          595
+         ],
+         "bright": 26,
+         "min_h": 40,
+         "max_h": 70,
+         "min_w": 80,
+         "min_rows": 1,
+         "retries": 5,
+         "retry_wait": 600,
+         "clicks": 3,
+         "double": true,
+         "fallback_first_y": 146,
+         "pitch": 53
+        }
+       }
+      ]
+     }
+    },
+    {
+     "log": "✅ 选难度完成（测试模式，不开局）"
+    }
+   ]
+  },
+  "observe_only": {
+   "steps": [
+    {
+     "log": "👀 观察模式：等大厅出现，只观察不点击"
+    },
+    {
+     "wait_image": {
+      "template": "btn_lobby_start.png",
+      "threshold": 0.85,
+      "timeout": 300000,
+      "interval": 1000,
+      "required": false,
+      "scales": [
+       1.0,
+       0.95,
+       0.9,
+       0.85,
+       0.8,
+       0.75,
+       0.7,
+       1.05,
+       1.1
+      ]
+     }
+    },
+    {
+     "wait": 8000
+    }
+   ]
+  }
+ },
+ "cap_ref": [
+  1690,
+  921
+ ],
+ "_cap_ref_note": "模板基准窗口；当前客户区和它不一致时，按 (宽/1690, 高/921) 再加一档非等比缩放。window_rebind_sec=25：War3 进图会重建窗口（标题变地图名、尺寸也变），旧 hwnd 失效不能直接判「游戏已关闭」，给 25 秒找回。"
+}

@@ -1,0 +1,16 @@
+# Local build output and runtime data
+build/
+dist/
+logs/
+**/logs/
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
+*.zip
+*.rar
+*.log
+*.spec
+
+# This old copy is duplicated in tools/ and is not used by the build.
+/我在峡谷打僵尸_全静默版.exe

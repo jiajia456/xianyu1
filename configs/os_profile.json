@@ -1,0 +1,51 @@
+{
+  "_说明": [
+    "按系统分档的运行参数（2026-11-25 用户要求：点「开始运行」时先检测本机是 Win7 还是 Win10）。",
+    "每次点「开始运行」读一次；改完这个文件要重新点开始（不用重启程序）。",
+    "",
+    "hover_scale       鼠标悬停时长倍数。War3 必须「鼠标进入按钮」后才认点击，",
+    "                  Win7 那批机器渲染慢半拍，默认给 1.25（0.8s → 1.0s）。",
+    "focus_wait_scale  切前台时每轮的等待倍数（ensure_foreground）。",
+    "capture_mode      auto / screen / printwindow。",
+    "                  Win7 关掉 Aero（无 DWM 合成）时 PrintWindow 常返回黑图，",
+    "                  但 auto 会在画面变纯色时自动退回屏幕抓取，所以默认仍是 auto；",
+    "                  现场判定后台抓图有问题时，把 win7 这项改成 screen。",
+    "",
+    "_force_capture_mode（写在根上）优先级最高，用来临时强制某一种抓图方式。",
+    "改错了想恢复：删掉本文件也不会坏，程序会用内置默认值。",
+    "save_panel_score  「存档挑战」面板标题的匹配阈值。Win10=0.82；Win7 实测同一块面板只有 0.769（字体渲染差异），所以 Win7 档放到 0.75，避免误判「面板没开」。"
+  ],
+  "default": {
+    "hover_scale": 1.0,
+    "focus_wait_scale": 1.0,
+    "capture_mode": "auto",
+    "save_panel_score": 0.82
+  },
+  "win7": {
+    "hover_scale": 1.0,
+    "focus_wait_scale": 1.0,
+    "capture_mode": "auto",
+    "note": "v1.96：面板标题阈值放宽到 0.75（6.1.7601 实测 0.769）；其余参数仍与 Win10 一致",
+    "save_panel_score": 0.75
+  },
+  "win8": {
+    "hover_scale": 1.0,
+    "focus_wait_scale": 1.0,
+    "capture_mode": "auto"
+  },
+  "win81": {
+    "hover_scale": 1.0,
+    "focus_wait_scale": 1.0,
+    "capture_mode": "auto"
+  },
+  "win10": {
+    "hover_scale": 1.0,
+    "focus_wait_scale": 1.0,
+    "capture_mode": "auto"
+  },
+  "win11": {
+    "hover_scale": 1.0,
+    "focus_wait_scale": 1.0,
+    "capture_mode": "auto"
+  }
+}

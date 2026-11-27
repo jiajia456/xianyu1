@@ -1,0 +1,108 @@
+{
+  "_说明": [
+    "通关循环 = 一局从进场打到退出。六个阶段，每个都能单独开关（将来软件里就是勾选框）。",
+    "A 进场 → B 局内准备 → C 提前挑战+挑战存档 → D 存档挑战 → E 秘境挑战 → F 胜利收尾",
+    "D「存档挑战」必须在 E「秘境挑战」之前：游戏原文「建议完成全部存档挑战后再开启」。",
+    "E 的 island / undead 就是「打哪个秘境」的勾选；confirm=yes 表示真打（弹窗点「是」）。",
+    "所有阶段 enabled=false 即整段跳过，脚本按顺序执行剩下的阶段。"
+  ],
+  "rounds": 1,
+  "pause_between_rounds": 8,
+  "cooldown_between_rounds": 0,
+  "risk_retry": 5,
+  "risk_wait": 30,
+  "_risk_note": "风控恢复策略（用户 2026-11-16 19:06 定）：遇到「官方检测该账号有作弊风险」时不再收工，而是 taskkill /F 结束 War3 进程 → 等 risk_wait 秒 → 重开游戏 → 重跑同一轮。risk_retry=允许重开的次数（99 基本等于不限）；0 = 不重开（老行为）。cooldown_between_rounds 已按用户要求置 0（不再有局间冷却）。",
+  "_cooldown_note": "局间冷却秒数，现已置 0（用户 19:06 要求取消冷却）。若以后想打散节奏可改回 180~300，或临时 --cooldown N。",
+  "difficulty": {
+    "_说明": [
+      "本局难度的判定与低难度规则。用户 2026-11-16 21:09：N1~N7 默认不打秘境挑战，",
+      "打完存档挑战静待 60 秒就退出游戏进下一轮循环；N8 及以上才打秘境挑战。",
+      "判定顺序：--difficulty / --difficulty-seq  >  本文件 name 或 seq  >  大厅实际点的那一行（logs/lobby_difficulty.json）",
+      "seq：逐轮难度序列，例如 [\"N1\",\"N2\",\"N3\",\"N4\",\"N5\",\"N6\",\"N7\"] → 7 局分别点大厅第 1~7 行。",
+      "  每轮写 logs/diff_target.json 告诉大厅脚本点第几行；点完还会回读校验（高亮行 + 截图识别数字）。",
+      "name 留空且 seq 为空 = 自动：沿用上一版行为（取大厅最下面一行 = 最高难度）。",
+      "low_max=7 → 号码 ≤7 视为低难度（不打秘境）；enabled=false 或 --no-low-rule 可整条规则关掉。"
+    ],
+    "enabled": true,
+    "name": "",
+    "low_max": 7,
+    "skip_secret_on_low": true,
+    "quit_direct_on_low": true,
+    "pause_after_slots": 60,
+    "pause_before_secret": 0,
+    "_pause_note": "pause_after_slots=低难度（N1~N7）存档挑战打完等 60s 再走收尾（此时秘境已跳过）；pause_before_secret=高难度（N8+）D 存档挑战打完等 N 秒再开 E 秘境挑战。用户 2026-11-17 16:13 设 30s，18:14 要求取消 → 现为 0（D 完直接进 E，不等待）。等待期间遇到登录窗会立刻停手。",
+    "seq": []
+  },
+  "stages": {
+    "enter": {
+      "label": "进场",
+      "enabled": true,
+      "cleanup": true,
+      "timeout_in_game": 150,
+      "reuse_room": true
+    },
+    "prepare": {
+      "label": "局内准备",
+      "enabled": true,
+      "skill": 3,
+      "equip": 4,
+      "upgrade": 3
+    },
+    "clear": {
+      "label": "提前挑战 + 挑战存档",
+      "enabled": true,
+      "interval": 60,
+      "timeout": 1800
+    },
+    "slots": {
+      "label": "存档挑战（12 格）",
+      "enabled": true,
+      "rounds": 2,
+      "gap": 1.0,
+      "require_panel": true
+    },
+    "secret": {
+      "label": "秘境挑战",
+      "enabled": true,
+      "island": false,
+      "undead": true,
+      "delta": false,
+      "delta_min_n": 12,
+      "confirm": "yes",
+      "_说明": [
+        "N8 及以上才执行本阶段（N1~N7 由 difficulty.skip_secret_on_low 跳过）。",
+        "alt = 类型自动交替：按 seq 顺序一局一个，打成功了才推进，状态落盘 logs/secret_alt.json，",
+        "  所以「一次只跑 1 局」的分散启动也能接着上次的节奏走（第一局海岛、第二局不死、第三局三角洲…）。",
+        "想临时只打某一种：命令行 --island / --undead / --delta（会覆盖交替，且不推进状态）。",
+        "想关掉交替按下面勾选打：alt.enabled=false 或 --no-secret-alt。",
+        "delta = 2026-11-27 地图更新新增的「三角洲·潮汐监狱」，通关 N12 后开放；游戏提示「每周只能开启一个副本」，",
+        "  开了三角洲本周就不能再开海岛/不死，别同时勾。",
+        "delta_min_n = 三角洲的最低难度（默认 12）：本轮难度 < N12 时自动跳过三角洲、顺延到下一个类型。",
+        "  难度未知（大厅没读到）时按「不满足」处理，避免误传送到三角洲。"],
+      "alt": {
+        "enabled": true,
+        "seq": [
+          "island",
+          "undead",
+          "delta"
+        ]
+      }
+    },
+    "finish": {
+      "label": "胜利收尾",
+      "enabled": true,
+      "quit": true,
+      "interval": 3,
+      "timeout": 1500,
+      "_note": "低难度（N1~N6）时不走这里，改成 stage_quit_direct：F10→E→X→X 直接退出。on_fail=quit 表示遇到「失败」结算也点继续观战再退出；改成 wait 则只关面板、继续等真正的胜利。",
+      "on_fail": "quit",
+      "settle_timeout": 300
+    }
+  },
+  "busy_wait_minutes": 6,
+  "max_round_minutes": 50,
+  "_stuck_note": "单局看门狗（用户 2026-11-17 15:20）：一轮（一次通关循环，从第 1 步搜图算起）超过 max_round_minutes 分钟还没打完 → 判定卡死 → 杀 War3 + 重开游戏 + 重跑本轮。**不重启平台**（这条已从平台重启条件里删除），重开次数与风控共用 risk_retry。0=不限制。",
+  "busy_attempts": 2,
+  "restart_on_enter_fail": true,
+  "_busy_note": "无法创建房间（用户 2026-11-17 15:07）：一次尝试 = 从第 1 步搜索地图 → 进详情页 → 建房，共 busy_attempts 次、每次失败等 busy_wait_minutes 分钟；都不行才重启平台（restart_on_enter_fail）。「无法正常开始游戏」不再重启平台（15:03 删除）。"
+}

@@ -1,0 +1,325 @@
+{
+ "_note": [
+  "正常退出 War3 —— 热键版（用户 2026-11-15 23:36 实测通过，全程无需坐标）",
+  "F10 开游戏菜单 → E 选「结束游戏」→ X 选「退出程序」→ X 确认「退出」",
+  "",
+  "为什么用热键而不是点按钮：",
+  "  点按钮那版曾因「窗口被抢焦点，第一次点击只用于激活窗口」而失败（按钮没响应，面板没弹出）。",
+  "  热键不受这个影响：只要窗口能聚焦，按键一定送达。坐标版保留为 quit_game_click 兜底。",
+  "",
+  "为什么不用 taskkill /IM War3.exe /F：",
+  "  强杀会让平台认为玩家异常掉线，之后开局容易弹「断线重连」（12 秒倒计时，不点会自动拉回旧局），",
+  "  右下角「开始游戏」还会变成灰色「游戏中」，只能重启平台才恢复。",
+  "  正规退出后实测：房间仍在、「开始游戏」蓝色可点、无断线重连。",
+  "",
+  "注意：ESC 不会打开菜单（实测无效），必须用 F10。",
+  "hotkeys.panic 特意设成 f11，避免和 F10 菜单键打架。",
+  "",
+  "实测画面校验（模板比对均为 1.000）：",
+  "  按完 F10 → btn_menu_end 命中「游戏菜单」",
+  "  按完 E   → btn_quit_app 命中「结束游戏选项」面板（重新开始任务/退出任务/退出程序/前一菜单）",
+  "  按完 X   → dlg_confirm_quit 命中「确认退出 / 你确定想退出吗？」（退出(X) / 取消(A)）",
+  "  再按 X   → War3 进程结束",
+  "",
+  "实测耗时（2026-11-15 23:53，step_gap=3000）：",
+  "  23:53:51 起 → 52 按 F10 → 56 菜单出来按 E → 59 面板出来按 X → 54:02 按 X 确认 → 54:04 窗口关闭",
+  "  任务内 13s，整个进程 13.9s；其中 3 次按键间隔各 3s（共 9s），其余为窗口激活+画面识别+收尾",
+  "  退出后：房间号不变、密码仍在、开始游戏蓝色可点、无断线重连",
+  "",
+  "运行： run.bat run --config configs\\war3_exit.json --task quit_game"
+ ],
+ "window": {
+  "exe": [
+   "War3.exe",
+   "Warcraft III.exe",
+   "y3.exe"
+  ],
+  "title_re": [
+   "Warcraft"
+  ],
+  "min_size": 400
+ },
+ "capture": "auto",
+ "humanize": true,
+ "click_jitter": 1,
+ "template_dir": "templates",
+ "start_task": "quit_game",
+ "hotkeys": {
+  "start_pause": "f8",
+  "stop": "f9",
+  "panic": "f11"
+ },
+ "tasks": {
+  "quit_game": {
+   "_note": "热键退出：F10 → E → X → X。step_gap=3000 → 每按一次键自动停 3 秒再走下一步；每步仍有画面校验，卡住自动补按",
+   "expect_window_close": true,
+   "repeat": 1,
+   "step_gap": 3000,
+   "steps": [
+    {
+     "log": "① F10 打开游戏菜单"
+    },
+    {
+     "focus": true
+    },
+    {
+     "wait": 800
+    },
+    {
+     "if_image": {
+      "template": "btn_menu_end.png",
+      "threshold": 0.9,
+      "then": [
+       {
+        "log": "   菜单已经是打开的，跳过 F10"
+       }
+      ],
+      "else": [
+       {
+        "key": "f10",
+        "hold": 150
+       }
+      ]
+     }
+    },
+    {
+     "if_image": {
+      "template": "btn_menu_end.png",
+      "threshold": 0.9,
+      "then": [
+       {
+        "log": "   菜单已打开，3 秒后按 E"
+       }
+      ],
+      "else": [
+       {
+        "log": "   菜单没出来，补按一次 F10"
+       },
+       {
+        "focus": true
+       },
+       {
+        "wait": 800
+       },
+       {
+        "key": "f10",
+        "hold": 150
+       },
+       {
+        "wait": 1200
+       }
+      ]
+     }
+    },
+    {
+     "log": "② 按 E =「结束游戏」（按一次后高频繁探，帧率低也不怕）"
+    },
+    {
+     "key_until": {
+      "key": "e",
+      "hold": 180,
+      "template": "tpl_end_panel_title.png",
+      "threshold": 0.85,
+      "tries": 5,
+      "initial": 3000,
+      "wait_ms": 3000,
+      "interval": 300
+     }
+    },
+    {
+     "log": "   结束游戏选项面板已弹出"
+    },
+    {
+     "log": "③ 按 Q =「退出游戏」"
+    },
+    {
+     "key": "q",
+     "hold": 150
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "log": "④ 按 O 确认（直接按键，不找图）"
+    },
+    {
+     "key": "o",
+     "hold": 150
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "log": "✅ 已提交退出（F10 → E → Q → O）"
+    }
+   ]
+  },
+  "quit_game_click": {
+   "_note": "兜底：点按钮版（热键失效时用）。注意首次点击可能被「激活窗口」吃掉，所以带补点；step_gap=3000 每个动作后停 3 秒",
+   "expect_window_close": true,
+   "repeat": 1,
+   "step_gap": 3000,
+   "steps": [
+    {
+     "focus": true
+    },
+    {
+     "wait": 400
+    },
+    {
+     "if_image": {
+      "template": "btn_menu_end.png",
+      "threshold": 0.9,
+      "then": [
+       {
+        "log": "   菜单已开"
+       }
+      ],
+      "else": [
+       {
+        "key": "f10",
+        "hold": 150
+       },
+       {
+        "wait": 900
+       }
+      ]
+     }
+    },
+    {
+     "loop": {
+      "count": 3,
+      "gap": 900,
+      "steps": [
+       {
+        "if_image": {
+         "template": "tpl_end_panel_title.png",
+         "threshold": 0.85,
+         "then": [
+          {
+           "log": "   面板已在"
+          }
+         ],
+         "else": [
+          {
+           "focus": true
+          },
+          {
+           "wait": 300
+          },
+          {
+           "click_image": {
+            "template": "btn_menu_end.png",
+            "threshold": 0.9,
+            "timeout": 3000
+           }
+          },
+          {
+           "wait": 600
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "click_image": {
+      "template": "btn_quit_app.png",
+      "threshold": 0.8,
+      "timeout": 5000,
+      "required": true
+     }
+    },
+    {
+     "wait": 1300
+    },
+    {
+     "focus": true
+    },
+    {
+     "wait": 200
+    },
+    {
+     "key": "x",
+     "hold": 150
+    },
+    {
+     "wait": 2200
+    },
+    {
+     "log": "✅ 已提交退出（点击版）"
+    }
+   ]
+  },
+  "quit_task_only": {
+   "_note": "只退出当前这一局、保留 War3（回到主菜单）：F10 → E → Q",
+   "repeat": 1,
+   "steps": [
+    {
+     "focus": true
+    },
+    {
+     "wait": 400
+    },
+    {
+     "if_image": {
+      "template": "btn_menu_end.png",
+      "threshold": 0.9,
+      "then": [],
+      "else": [
+       {
+        "key": "f10",
+        "hold": 150
+       },
+       {
+        "wait": 900
+       }
+      ]
+     }
+    },
+    {
+     "key": "e",
+     "hold": 150
+    },
+    {
+     "wait": 1100
+    },
+    {
+     "key": "q",
+     "hold": 150
+    },
+    {
+     "wait": 1500
+    },
+    {
+     "log": "✅ 已退出当前任务（War3 仍在）"
+    }
+   ]
+  },
+  "open_menu": {
+   "_note": "只打开菜单并确认（调试用）",
+   "repeat": 1,
+   "steps": [
+    {
+     "focus": true
+    },
+    {
+     "key": "f10",
+     "hold": 150
+    },
+    {
+     "wait": 900
+    },
+    {
+     "wait_image": {
+      "template": "btn_menu_end.png",
+      "threshold": 0.9,
+      "timeout": 3000,
+      "required": true
+     }
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,56 @@
+{
+ "_note": [
+  "全链路：搜地图 → 进详情页 → 创建房间 → 填密码 → 房间开局 → 大厅选最高难度 → 开打",
+  "一条命令跑完：run.bat pipeline   （或 python game_auto.py pipeline）",
+  "每一步都会重新绑定自己的窗口：主平台窗(1332x945) / 创建弹窗(584x517) / 房间窗(1224x904) / War3大厅(1690x921)",
+  "settle = 这一步结束后等多少毫秒，让下一个窗口弹出来（比在 bat 里写 timeout 更清楚，也少 4 次进程启动）",
+  "optional: true 表示这一步失败也继续（默认失败即停，避免带着错状态往下点）",
+  "调试某一步： --only ③   （只跑名字里含该字符的那步）",
+  "skip_if_room: 已有房间窗口时跳过该步（①②③④），避免重复建房触发「您正在房间内…」弹窗",
+  "开局前会自动校验房间：房间名必须是「我在峡谷打」、密码必须已设置，否则点「退出」离房再重建（跳过校验加 --no-room-check）",
+  "busy_wait_minutes: 遇到「您正在游戏中，不能创建游戏房间」点「确定」后等多少分钟，然后整段从第 1 步重来（僵尸会话只能靠平台自己超时释放）；试几次由 full_loop 数（默认 4 次，都不行才重启平台）",
+  "reopen_on_game_gone: ⑤ 等大厅时如果发现「上一局已经结束」（断线重连弹窗关掉后 War3 进程也没了，比如手动结束任务/崩溃），立刻回退到 ④ 重新点「开始游戏」，最多重开这么多次（默认 2），用完才判本段失败。不会干等 15 分钟看一个永远不会出现的大厅按钮。",
+  "rebuild_on_room_gone: 断线弹窗收掉后，如果**回不到 ④**（本次链路里没有房间开局步骤）或**确认房间窗已经没了**（窗口对象不存在），就从第 1 步「搜地图」重新走一遍重新建房，最多这么多次（默认 2），用完才判本段失败。只是「截图读不到」不算房间没了，不会触发重建。"
+ ],
+ "steps": [
+  {
+   "name": "① 搜地图并进详情页",
+   "config": "configs/wuxia.json",
+   "task": "search_double",
+   "settle": 3000,
+   "skip_if_room": true,
+   "check_warn": true
+  },
+  {
+   "name": "② 创建房间",
+   "config": "configs/wuxia.json",
+   "task": "create_room",
+   "settle": 2500,
+   "skip_if_room": true,
+   "check_warn": true
+  },
+  {
+   "name": "③ 填密码并提交",
+   "config": "configs/wuxia_dialog.json",
+   "task": "fill_and_submit",
+   "settle": 2500,
+   "skip_if_room": true
+  },
+  {
+   "name": "④ 房间内开局（观战门禁）",
+   "config": "configs/wuxia_room.json",
+   "task": "start_game",
+   "settle": 800,
+   "activate_room": true
+  },
+  {
+   "name": "⑤ 大厅选最高难度并开打",
+   "config": "configs/wuxia_lobby.json",
+   "task": "auto_start",
+   "settle": 1500
+  }
+ ],
+ "busy_wait_minutes": 6,
+ "reopen_on_game_gone": 2,
+ "rebuild_on_room_gone": 2
+}

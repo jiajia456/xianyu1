@@ -1,0 +1,35 @@
+我在峡谷打僵尸 v1.93 源码快照（分歧线路备份）
+生成时间：2026-11-25 16:33
+来源：打包 v1.93 时的完整输入目录（%TEMP%\kkbuild193\src_win7），已校验与已交付的
+      我在峡谷打僵尸_v1.93/core 内容一致（core 里只是少了 app_gui/build_exe 等打包工具）。
+
+一、这条线路和 v1.92 的区别（逐字节验证过的 5 个文件）
+    game_auto.py            177499   比 v1.92 多 3 处 sysenv 钩子：悬停倍数、等前台倍数、抓图方式
+    app_gui.py               77930   点「开始运行」时先检测本机是 W7 还是 W10，日志打印档位
+    build_exe.py             58964   打包时把 sysenv.py / configs/os_profile.json 一起收进 core
+    sysenv.py                 8701   系统识别 + 档位参数读取（新文件，v1.92 没有）
+    configs/os_profile.json   1807   分档参数表（新文件）：hover_scale / focus_wait_scale / capture_mode
+    _envcheck.py              4623   自检的 LOCAL 列表里加了 sysenv
+
+二、为什么留这份
+   v1.92 是「共用基线」：W7 完全按 W10 的节奏跑，一份代码，不分岔。
+   v1.93 是「已接好旋钮的线路」：分歧一旦实测确认，只改 os_profile.json 的数值就能分开，
+   不用动游戏逻辑。它不是废案，是备份。
+
+三、怎么切回这条线路（约 10 分钟）
+   1. 先把当前源码目录整体打个 zip 备份
+   2. 用本目录覆盖 kk_auto_源码_v1.91_20261123\kk_auto（保留 logs、README、bats 等本地文件）
+   3. python test_sysenv.py            → 应全部通过
+   4. python build_exe.py              → 重新打包，core 里必须能看到 sysenv.py 和 configs/os_profile.json
+   5. 启动后点「开始运行」，日志应出现：
+      「🖥 本机系统：…」「按「win7」档运行：…」
+
+四、默认值现状（重要）
+   v1.93 交付时的 os_profile.json 里，win7 档写的是 hover_scale=1.25 / focus_wait_scale=1.2，
+   即「W7 已经比 W10 慢一档」。如果暂时没有实测依据、想让 W7 先跟 W10 完全一样，
+   把这两个值改成 1.0 即可（不要改 sysenv.py 里的 BUILTIN，那是兜底默认）。
+
+五、注意
+   这批文件的时间戳是 16:11–16:16。16:20 之后源码目录被写坏过一次（6 个文件全零，
+   含 game_auto.py / build_exe.py / sysenv.py / os_profile.json 和 4 个 pyc），
+   那次 +2KB 的增量没有救回来，本快照是 16:16 的状态，不含那批增量。

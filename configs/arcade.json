@@ -1,0 +1,83 @@
+{
+  "_note": [
+    "街机模块（E:\\kkduizhan\\Games\\emulator\\KKEmulator.exe）自动投币 / 自动开局 / 自动连打",
+    "键位是 MAME / FinalBurn Neo 通用默认： 5=投币  1=1P开始  方向键=摇杆  Ctrl/Alt/Space=按键1/2/3",
+    "如果你的游戏改过键位，直接改下面对应的 key 值即可（支持 a-z 0-9 f1-f12 space ctrl alt shift enter esc up down left right）",
+    "运行： python game_auto.py --config configs\\arcade.json --task main"
+  ],
+  "window": {
+    "exe": ["KKEmulator.exe"],
+    "title_re": ["KK", "Emulator"],
+    "min_size": 300
+  },
+  "capture": "auto",
+  "humanize": true,
+  "click_jitter": 3,
+  "template_dir": "templates",
+  "start_task": "main",
+  "hotkeys": {
+    "start_pause": "f8",
+    "stop": "f9",
+    "panic": "f10"
+  },
+  "tasks": {
+    "main": {
+      "repeat": 0,
+      "steps": [
+        { "log": "=== 投币 + 1P 开始 ===" },
+        { "key": "5" },
+        { "wait": 400 },
+        { "key": "5" },
+        { "wait": 400 },
+        { "key": "1" },
+        { "wait": 2500 },
+        { "log": "=== 开打：连打 + 方向扰动 ===" },
+        { "loop": {
+            "count": 40,
+            "gap": 20,
+            "steps": [
+              { "keys": ["ctrl", "alt", "space"], "gap": 55 },
+              { "key": "left" },
+              { "keys": ["ctrl", "ctrl"], "gap": 40 },
+              { "key": "right" },
+              { "key": "up" }
+            ]
+        }},
+        { "wait": 800 },
+        { "log": "=== 一轮结束，重新投币 ===" }
+      ]
+    },
+
+    "coin_only": {
+      "repeat": 0,
+      "steps": [
+        { "key": "5" },
+        { "wait": 300 },
+        { "key": "1" },
+        { "wait": 3000 }
+      ]
+    },
+
+    "rapid_fire": {
+      "repeat": 0,
+      "steps": [
+        { "log": "持续连发（每 6 秒补一次投币，防止续关）" },
+        { "repeat_key": "ctrl", "times": 120, "ms": 30, "gap": 22 },
+        { "key": "5" },
+        { "wait": 200 },
+        { "key": "1" }
+      ]
+    },
+
+    "pause_safe": [
+      { "log": "进入暂停：松开所有按键" },
+      { "keyup": "ctrl" },
+      { "keyup": "alt" },
+      { "keyup": "space" },
+      { "keyup": "up" },
+      { "keyup": "down" },
+      { "keyup": "left" },
+      { "keyup": "right" }
+    ]
+  }
+}

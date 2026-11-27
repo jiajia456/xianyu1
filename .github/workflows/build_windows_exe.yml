@@ -1,0 +1,60 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      KK_TARGET: win7
+      KK_NO_BUMP: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8.10'
+          architecture: x64
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip==24.0
+          python -m pip install -r tools/requirements-win7.txt
+      - name: Build and validate EXE
+        run: python build_exe.py --zip
+      - name: Verify release archive
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          import re
+          import zipfile
+
+          version = re.search(r'^APP_VER = "(v[0-9]+\.[0-9]+)"',
+                              Path('app_gui.py').read_text(encoding='utf-8'), re.M)
+          if not version:
+              raise SystemExit('APP_VER was not found')
+          name = f'我在峡谷打僵尸_{version.group(1)}'
+          archive = Path('dist') / f'{name}.zip'
+          if not archive.is_file():
+              raise SystemExit(f'Missing release archive: {archive}')
+          with zipfile.ZipFile(archive) as package:
+              required = {f'{name}/{name}.exe', f'{name}/core/game_auto.py',
+                          f'{name}/core/configs/full_loop.json'}
+              missing = required - set(package.namelist())
+              if missing:
+                  raise SystemExit(f'Missing packaged files: {sorted(missing)}')
+              corrupt = package.testzip()
+              if corrupt:
+                  raise SystemExit(f'Corrupt packaged file: {corrupt}')
+          print(f'Validated {archive} ({archive.stat().st_size:,} bytes)')
+          '@ | python -
+      - name: Upload complete program
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-EXE
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7

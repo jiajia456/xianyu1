@@ -1,0 +1,342 @@
+{
+  "_note": [
+    "平台搜索地图：点搜索框 → 输入「我在峡谷打僵尸」→ 回车 → 找到封面图 → 双击",
+    "模板：templates\\search_box.png（搜索框）、templates\\tile_wuxia_native.png + tile_wuxia.png（封面，支持多尺度）",
+    "用之前先把平台窗口保持在前台（脚本也会自动抢一次前台）",
+    "运行： run.bat run --config configs\\wuxia.json --task search_double",
+    "只验证不实际点： 加 --dry-run"
+  ],
+  "window": {
+    "exe": ["Platform.exe"],
+    "title_re": ["KK"],
+    "min_size": 400
+  },
+  "capture": "auto",
+  "humanize": true,
+  "click_jitter": 2,
+  "template_dir": "templates",
+  "start_task": "search_double",
+  "hotkeys": {
+    "start_pause": "f8",
+    "stop": "f9",
+    "panic": "f10"
+  },
+  "tasks": {
+    "close_popup": {
+      "_note": "随机弹窗（如「我要变强」）→ 直接点「我知道了」关掉；没弹窗就什么都不做",
+      "repeat": 1,
+      "steps": [
+        { "if_image": {
+            "template": "btn_popup_ok.png",
+            "threshold": 0.88,
+            "then": [
+              { "log": "发现随机弹窗 → 点「我知道了」" },
+              { "click_image": { "template": "btn_popup_ok.png", "threshold": 0.88, "timeout": 3000, "fallback": [666, 725] } },
+              { "wait": 900 }
+            ],
+            "else": [ { "log": "当前没有随机弹窗" } ]
+        }}
+      ]
+    },
+
+    "popup_guard": {
+      "_note": "常驻看门狗：每 3 秒扫一次有没有随机弹窗，有就点「我知道了」点掉。按 F9 停止",
+      "repeat": 1,
+      "steps": [
+        { "log": "看门狗启动：监控随机弹窗，命中即点「我知道了」（F9 停止）" },
+        { "loop": { "count": 0, "gap": 3000, "steps": [
+            { "if_image": {
+                "template": "btn_popup_ok.png",
+                "threshold": 0.88,
+                "then": [
+                  { "log": "  发现随机弹窗 → 点「我知道了」关闭" },
+                  { "click_image": { "template": "btn_popup_ok.png", "threshold": 0.88, "timeout": 3000, "fallback": [666, 725] } },
+                  { "wait": 1200 }
+                ],
+                "else": []
+            }}
+        ]}}
+      ]
+    },
+
+    "plat_confirm": {
+      "_note": "平台提示「您正在房间内，如果继续切换，将退出房间，确定继续吗？」→ 点「确定」（3 秒倒计时，晚了会自动取消）",
+      "repeat": 1,
+      "steps": [
+        { "if_image": {
+            "template": "btn_platform_confirm.png",
+            "threshold": 0.86,
+            "then": [
+              { "log": "发现「平台提示」弹窗 → 点「确定」" },
+              { "click_image": { "template": "btn_platform_confirm.png", "threshold": 0.86, "timeout": 3000 } },
+              { "wait": 900 }
+            ],
+            "else": [ { "log": "没有平台提示弹窗" } ]
+        }}
+      ]
+    },
+
+    "plat_guard": {
+      "_note": "常驻看门狗：每 1.5 秒扫一次，出现「平台提示」就点确定（F9 停止）",
+      "repeat": 1,
+      "steps": [
+        { "log": "平台提示看门狗启动（F9 停止）" },
+        { "loop": { "count": 0, "gap": 1500, "steps": [
+            { "if_image": {
+                "template": "btn_platform_confirm.png",
+                "threshold": 0.86,
+                "then": [
+                  { "log": "  ⚠️ 平台提示弹窗 → 点「确定」" },
+                  { "click_image": { "template": "btn_platform_confirm.png", "threshold": 0.86, "timeout": 2000 } },
+                  { "wait": 800 }
+                ],
+                "else": []
+            }}
+        ]}}
+      ]
+    },
+
+    "search_double": {
+      "repeat": 1,
+      "steps": [
+        { "log": "🔙 搜索地图前：ESC ×2（两次间隔 2s，清掉残留面板/提示）" },
+        { "esc_safe": { "times": 2, "gap": 2000 } },
+        { "wait": 600 },
+        { "if_image": {
+            "template": "btn_popup_ok.png",
+            "threshold": 0.88,
+            "then": [
+              { "log": "⓿ 先关掉随机弹窗" },
+              { "click_image": { "template": "btn_popup_ok.png", "threshold": 0.88, "timeout": 3000, "fallback": [666, 725] } },
+              { "wait": 900 }
+            ],
+            "else": []
+        }},
+        { "if_image": {
+            "template": "btn_platform_confirm.png",
+            "threshold": 0.86,
+            "then": [
+              { "log": "⓿ 先点掉「平台提示 → 确定」" },
+              { "click_image": { "template": "btn_platform_confirm.png", "threshold": 0.86, "timeout": 3000 } },
+              { "wait": 900 }
+            ],
+            "else": []
+        }},
+        { "log": "① 点击搜索框" },
+        { "click_image": {
+            "template": "search_box.png",
+            "threshold": 0.80,
+            "timeout": 8000,
+            "fallback": [900, 30],
+            "required": true
+        }},
+        { "wait": 400 },
+
+        { "log": "② 输入地图名：我在峡谷打僵尸" },
+        { "type": { "text": "我在峡谷打僵尸", "interval": 80, "method": "unicode" }},
+        { "wait": 400 },
+
+        { "log": "③ 回车确认搜索" },
+        { "key": "enter" },
+        { "wait": 2000 },
+
+        { "log": "④ 找封面图并双击" },
+        { "click_image": {
+            "template": ["tile_wuxia_native.png", "tile_wuxia.png"],
+            "threshold": 0.72,
+            "scales": [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+            "timeout": 12000,
+            "interval": 400,
+            "clicks": 2,
+            "required": false
+        }},
+
+        { "wait": 1000 },
+
+        { "log": "④b 双击后可能弹「平台提示（正在房间内→确定）」：连查 3 次，出现就点确定" },
+        { "loop": { "count": 3, "gap": 700, "steps": [
+            { "if_image": {
+                "template": "btn_platform_confirm.png",
+                "threshold": 0.86,
+                "then": [
+                  { "log": "  ⚠️ 出现「平台提示」→ 点「确定」继续切换" },
+                  { "click_image": { "template": "btn_platform_confirm.png", "threshold": 0.86, "timeout": 2500 } },
+                  { "wait": 1200 }
+                ],
+                "else": []
+            }}
+        ]}},
+
+        { "wait": 1200 },
+        { "log": "✅ 流程结束（若没双击成功，看 logs\\miss\\ 里的现场截图）" }
+      ]
+    },
+
+    "search_only": {
+      "repeat": 1,
+      "steps": [
+        { "click_image": { "template": "search_box.png", "threshold": 0.80, "timeout": 8000, "fallback": [900, 30], "required": true } },
+        { "wait": 400 },
+        { "type": { "text": "我在峡谷打僵尸", "interval": 80, "method": "unicode" }},
+        { "wait": 400 },
+        { "key": "enter" },
+        { "wait": 2500 },
+        { "log": "搜索完成" }
+      ]
+    },
+
+    "double_only": {
+      "repeat": 1,
+      "steps": [
+        { "log": "只找封面图并双击（搜索已完成的情况下用）" },
+        { "click_image": {
+            "template": ["tile_wuxia_native.png", "tile_wuxia.png"],
+            "threshold": 0.72,
+            "scales": [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+            "timeout": 12000,
+            "interval": 400,
+            "clicks": 2
+        }}
+      ]
+    },
+
+    "clear_box": {
+      "repeat": 1,
+      "steps": [
+        { "click_image": { "template": "search_box.png", "threshold": 0.80, "timeout": 5000, "fallback": [900, 30], "required": false } },
+        { "hotkey": "ctrl+a" },
+        { "key": "backspace" },
+        { "wait": 300 }
+      ]
+    },
+
+    "create_room_pwd": {
+      "_note": "点「创建房间」→ 在「房间密码」框输入密码 → 停住，不点创建（等下一步指令）",
+      "repeat": 1,
+      "steps": [
+        { "log": "① 检查创建房间弹窗是否已打开" },
+        { "if_image": {
+            "template": "lbl_room_pwd.png",
+            "threshold": 0.85,
+            "then": [ { "log": "   弹窗已打开，直接填密码" } ],
+            "else": [
+              { "click_image": { "template": "btn_create_room.png", "threshold": 0.82, "timeout": 8000, "fallback": [814, 893], "required": true } },
+              { "wait": 2500 }
+            ]
+        }},
+
+        { "log": "② 点击「房间密码」输入框" },
+        { "click_image": {
+            "template": "lbl_room_pwd.png",
+            "threshold": 0.85,
+            "timeout": 8000,
+            "offset": [258, 0],
+            "fallback": [706, 429],
+            "required": true
+        }},
+        { "wait": 400 },
+
+        { "log": "③ 输入密码 Aa（点进框 + 自校验，失败自动换粘贴重试）" },
+        { "type_into": {
+            "template": "lbl_room_pwd.png",
+            "threshold": 0.85,
+            "offset": [253, -5],
+            "point": [704, 428],
+            "text": "Aa",
+            "region": [510, 412, 388, 30],
+            "interval": 120,
+            "click_wait": 300,
+            "after_wait": 400,
+            "retries": 3,
+            "required": true
+        }},
+        { "move": [700, 300] },
+        { "wait": 400 },
+
+        { "log": "✅ 密码已填，停在创建弹窗，等待下一步指令" }
+      ]
+    },
+
+    "submit_room": {
+      "_note": "弹窗里点「创建」（密码已填好的情况下用）",
+      "repeat": 1,
+      "steps": [
+        { "click_image": { "template": "btn_create_submit.png", "threshold": 0.82, "timeout": 6000, "fallback": [575, 664] } },
+        { "wait": 3000 },
+        { "log": "已提交创建" }
+      ]
+    },
+
+    "quick_join": {
+      "repeat": 1,
+      "steps": [
+        { "click_image": { "template": "btn_quick_join.png", "threshold": 0.82, "timeout": 8000, "fallback": [1005, 893], "required": true } },
+        { "wait": 3000 },
+        { "log": "已点快速加入" }
+      ]
+    },
+
+    "press_esc_2": {
+      "_note": "局间清场：正常退出游戏后按两次 ESC，两次之间间隔 5 秒（用户 2026-11-26）",
+      "repeat": 1,
+      "steps": [
+        { "log": "🔙 局间 ESC ×2（清掉残留面板/提示，两次间隔 5s）" },
+        { "esc_safe": { "times": 1 } },
+        { "wait": 5000 },
+        { "esc_safe": { "times": 1 } },
+        { "wait": 500 }
+      ]
+    },
+
+    "create_room": {
+      "_note": "详情页上点「创建房间」",
+      "repeat": 1,
+      "steps": [
+        { "log": "🔙 创建房间前：ESC ×2（两次间隔 2s）" },
+        { "esc_safe": { "times": 2, "gap": 2000 } },
+        { "wait": 500 },
+        { "click_image": { "template": "btn_create_room.png", "threshold": 0.82, "timeout": 8000, "fallback": [814, 893], "required": true } },
+        { "wait": 2500 }
+      ]
+    },
+
+    "quick_match": {
+      "_note": "详情页上点「快速匹配」",
+      "repeat": 1,
+      "steps": [
+        { "click_image": { "template": "btn_quick_match.png", "threshold": 0.82, "timeout": 8000, "fallback": [1194, 893], "required": true } },
+        { "wait": 2500 }
+      ]
+    },
+
+    "search_and_join": {
+      "_note": "全链路：搜索 → 双击封面 → 快速加入",
+      "repeat": 1,
+      "steps": [
+        { "log": "① 点搜索框" },
+        { "click_image": { "template": "search_box.png", "threshold": 0.80, "timeout": 8000, "fallback": [900, 30], "required": true } },
+        { "wait": 400 },
+        { "log": "② 输入地图名" },
+        { "type": { "text": "我在峡谷打僵尸", "interval": 80, "method": "unicode" }},
+        { "wait": 400 },
+        { "key": "enter" },
+        { "wait": 2000 },
+        { "log": "③ 双击封面进详情页" },
+        { "click_image": {
+            "template": ["tile_wuxia.png", "tile_wuxia_native.png"],
+            "threshold": 0.72,
+            "scales": [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+            "timeout": 12000,
+            "interval": 400,
+            "clicks": 2,
+            "required": true
+        }},
+        { "wait": 3000 },
+        { "log": "④ 快速加入" },
+        { "click_image": { "template": "btn_quick_join.png", "threshold": 0.82, "timeout": 10000, "fallback": [1005, 893] }},
+        { "wait": 3000 },
+        { "log": "✅ 已进入房间/匹配流程" }
+      ]
+    }
+  }
+}
