@@ -854,6 +854,27 @@ def win7_pe_gate(final_dir: str) -> list[str]:
     return out
 
 
+def remove_app_local_ucrt(final_dir: str) -> int:
+    """Win7 包改用系统安装的 UCRT，避免带入构建机的 Windows 2022 版本。
+
+    PyInstaller 5 会从构建机复制 ucrtbase.dll 和 api-ms-win-* 转发 DLL。
+    这些文件的 PE 版本和导入表可能要求 Win8+。随包的启动器会先安装
+    Win7 可用的 VC++ 2015 运行库；此处只清理程序根目录的本地副本。
+    """
+    removed = 0
+    for name in os.listdir(final_dir):
+        lower = name.lower()
+        if lower != "ucrtbase.dll" and not (lower.startswith("api-ms-win-") and
+                                              lower.endswith(".dll")):
+            continue
+        path = os.path.join(final_dir, name)
+        if os.path.isfile(path):
+            os.remove(path)
+            removed += 1
+    log(f"   - 移除 {removed} 个构建机 UCRT 文件（由目标系统的 VC++ 运行库提供）")
+    return removed
+
+
 def win7_extras(final_dir: str) -> list[str]:
     """Win7 版加入原生 EXE 启动器、依赖安装脚本与自检工具。"""
     bad = []
@@ -1027,6 +1048,8 @@ def build():
     # ---- 瘦身：删掉用不到的依赖（KK_NO_SLIM=1 可跳过）----
     log("清理成品里用不到的依赖")
     slim_payload(final)
+    if IS_WIN7:
+        remove_app_local_ucrt(final)
 
     # ---- 打包后闸门：先核对文件齐不齐，再用成品 exe 跑依赖自检 ----
     bad = verify_core(core)
